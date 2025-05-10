@@ -44,6 +44,36 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 st.title("Proyeksi Harga Kripto Metode Monte Carlo")
+st.markdown(
+    "_Simulasi berbasis data historis untuk memproyeksikan harga kripto selama beberapa hari ke depan, menggunakan metode Monte Carlo. Harga yang digunakan adalah harga penutupan selama 365 hari terakhir._",
+    unsafe_allow_html=True
+)
+
+# ————————————————————
+# CSS global untuk styling hasil
+# ————————————————————
+
+st.markdown("""
+    <style>
+    table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    th {
+        background-color: #5B5B5B;
+        font-weight: bold;
+        color: white;
+        padding: 6px;
+        text-align: left;
+        border: 1px solid white;
+    }
+    td {
+        border: 1px solid white;
+        padding: 6px;
+        text-align: left;
+    }
+    </style>
+""", unsafe_allow_html=True)
 
 # —————————————————————————
 # Daftar ticker dan mapping ke CoinGecko
