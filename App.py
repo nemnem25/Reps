@@ -145,7 +145,139 @@ if not ticker_input:
     st.stop()
 
 # ————————————————————
-# Logika simulasi (Tetap Sama)
+# Logika simulasi
 # ————————————————————
 
-# Lanjutkan dengan logika simulasi Anda seperti biasa.
+try:
+    # Logika simulasi dan perhitungan lainnya
+    coin_id = coingecko_map[ticker_input]
+
+    resp = requests.get(
+        f"https://api.coingecko.com/api/v3/coins/{coin_id}/market_chart",
+        params={"vs_currency":"usd","days":"365"}
+    )
+    resp.raise_for_status()
+    prices = resp.json()["prices"]
+    dates = [datetime.fromtimestamp(p[0]/1000).date() for p in prices]
+    closes = [p[1] for p in prices]
+
+    df = pd.DataFrame({"Date":dates, "Close":closes}).set_index("Date")
+    if len(df) < 2:
+        st.warning("Data historis tidak mencukupi untuk simulasi.")
+        st.stop()
+
+    log_ret = np.log(df["Close"]/df["Close"].shift(1)).dropna()
+    mu, sigma = log_ret.mean(), log_ret.std()
+
+    # Harga penutupan terakhir (dari hari sebelumnya, sesuai historis)
+    current_price = df["Close"].iloc[-2]
+
+    harga_penutupan = format_angka_indonesia(current_price)
+    st.write(f"**Harga penutupan {ticker_input} sehari sebelumnya: US${harga_penutupan}**")
+
+    # Kombinasi simbol kripto, tanggal hari ini, dan harga penutupan terakhir untuk random seed
+    today = datetime.now().strftime("%Y-%m-%d")
+    seed = hash((ticker_input, today, current_price)) % 2**32
+    np.random.seed(seed)  # Atur random seed di sini
+
+    for days in [3, 7, 30, 90, 365]:
+        st.subheader(f"Proyeksi Harga Kripto {ticker_input} untuk {days} Hari ke Depan")
+        sims = np.zeros((days, 100000))
+        for i in range(100000):
+            rw = np.random.normal(mu, sigma, days)
+            sims[:, i] = current_price * np.exp(np.cumsum(rw))
+        finals = sims[-1, :]
+
+        bins = np.linspace(finals.min(), finals.max(), 10)
+        counts, _ = np.histogram(finals, bins=bins)
+        probs = counts / len(finals) * 100
+        idx_sorted = np.argsort(probs)[::-1]
+
+        table_html = "<table><thead><tr><th>Peluang</th><th>Rentang Harga (US$)</th></tr></thead><tbody>"
+
+        total_peluang = 0
+        rentang_bawah = float('inf')
+        rentang_atas = 0
+
+        for idx, id_sort in enumerate(idx_sorted):
+            if probs[id_sort] == 0:
+                continue
+            low = bins[id_sort]
+            high = bins[id_sort+1] if id_sort+1 < len(bins) else bins[-1]
+            low_fmt = format_angka_indonesia(low)
+            high_fmt = format_angka_indonesia(high)
+            pct = format_persen_indonesia(probs[id_sort])
+            table_html += f"<tr><td>{pct}</td><td>{low_fmt} - {high_fmt}</td></tr>"
+
+            if idx < 3:
+                total_peluang += probs[id_sort]
+                rentang_bawah = min(rentang_bawah, low)
+                rentang_atas = max(rentang_atas, high)
+
+        total_peluang_fmt = format_persen_indonesia(total_peluang)
+        rentang_bawah_fmt = format_angka_indonesia(rentang_bawah)
+        rentang_atas_fmt = format_angka_indonesia(rentang_atas)
+
+        table_html += f"""
+        <tr class='highlight-green'><td colspan='2'>
+        Peluang kumulatif dari tiga rentang harga tertinggi mencapai {total_peluang_fmt}, dengan kisaran harga US${rentang_bawah_fmt} hingga US${rentang_atas_fmt}.
+        </td></tr>
+        """
+
+        table_html += "</tbody></table>"
+
+        st.markdown(table_html, unsafe_allow_html=True)
+
+        # Hitung statistik tambahan
+        mean_log = np.mean(np.log(finals))
+        harga_mean = np.exp(mean_log)
+        chance_above_mean = np.mean(finals > harga_mean) * 100
+        std_dev = np.std(finals)
+        skewness = pd.Series(finals).skew()
+
+        # Format angka
+        mean_log_fmt = format_angka_indonesia(mean_log)
+        harga_mean_fmt = format_angka_indonesia(harga_mean)
+        chance_above_mean_fmt = format_persen_indonesia(chance_above_mean)
+        std_dev_fmt = format_angka_indonesia(std_dev)
+        skewness_fmt = format_angka_indonesia(skewness)
+
+        # Tambahkan tabel statistik dan kesimpulan
+        stat_table_html = f"""
+<br>
+<table>
+<thead><tr><th>Statistik</th><th>Nilai</th></tr></thead><tbody>
+<tr><td>Mean (Harga Logaritmik)</td><td>{mean_log_fmt}</td></tr>
+<tr><td>Harga Berdasarkan Mean</td><td>US${harga_mean_fmt}</td></tr>
+<tr><td>Chance Above Mean</td><td>{chance_above_mean_fmt}</td></tr>
+<tr><td>Standard Deviation</td><td>US${std_dev_fmt}</td></tr>
+<tr><td>Skewness</td><td>{skewness_fmt}</td></tr>
+<tr class="highlight-grey">
+    <td colspan="2">
+        <strong>Kesimpulan:</strong><br>
+        Berdasarkan hasil simulasi, harga kripto diperkirakan berada dalam kisaran yang cukup stabil, dengan harga logaritmik rata-rata (mean) sebesar <strong>US${harga_mean_fmt}</strong>. Ini menunjukkan potensi pergerakan harga mendekati angka ini dalam beberapa waktu ke depan. Dengan kemungkinan <strong>{chance_above_mean_fmt}</strong> harga akan berada di atas harga rata-rata, peluang untuk harga naik cukup signifikan. Meskipun begitu, fluktuasi harga masih tinggi, tercermin dari <strong>Standard Deviation</strong> sebesar <strong>US${std_dev_fmt}</strong>, yang menunjukkan adanya kemungkinan fluktuasi harga yang cukup lebar. Distribusi harga cenderung naik. Dengan <strong>Skewness</strong> sebesar <strong>{skewness_fmt}</strong>, ini menunjukkan bahwa distribusi harga cenderung condong ke kanan, artinya kemungkinan harga akan naik lebih besar daripada turun.
+    </td>
+</tr>
+</tbody></table>
+"""
+        st.markdown(stat_table_html, unsafe_allow_html=True)
+
+        # Tambahkan kotak teks untuk media sosial
+        social_media_text = (
+            f"Berdasarkan simulasi Monte Carlo, ada peluang sebesar {total_peluang_fmt} "
+            f"bagi {ticker_input} bergerak antara US${rentang_bawah_fmt} hingga US${rentang_atas_fmt} "
+            f"dalam {days} hari ke depan, dengan peluang {chance_above_mean_fmt} berada di atas rata-rata logaritmik US${harga_mean_fmt}."
+        )
+        st.text_area("Teks untuk Media Sosial", value=social_media_text, height=100)
+
+except Exception as e:
+    st.error(f"Terjadi kesalahan: {e}")
+
+# Debugging sebelum seed diatur
+print("Angka acak sebelum seed:", np.random.normal(0, 1, 5))
+
+# Atur random seed
+np.random.seed(42)
+
+# Debugging setelah seed diatur
+print("Angka acak setelah seed:", np.random.normal(0, 1, 5))
