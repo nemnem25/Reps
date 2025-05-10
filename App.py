@@ -13,8 +13,12 @@ def fetch_historical_data(coin_id, currency="usd", days=365):
     params = {"vs_currency": currency, "days": days}
     response = requests.get(url, params=params)
     if response.status_code == 200:
-        prices = response.json()["prices"]
+        data = response.json()
+        prices = data["prices"]
+        volumes = data["total_volumes"]
+
         df = pd.DataFrame(prices, columns=["timestamp", "close"])
+        df["volume"] = pd.DataFrame(volumes)[1]
         df["date"] = pd.to_datetime(df["timestamp"], unit="ms").dt.date
         df.set_index("date", inplace=True)
         df.drop(columns="timestamp", inplace=True)
@@ -117,7 +121,7 @@ def plot_analysis(df, fib_levels, macd, macd_signal, bb_upper, bb_middle, bb_low
 # ----------------------------
 st.title("📊 Aplikasi Analisis Teknikal Cryptocurrency")
 st.markdown(
-    "Analisis harga cryptocurrency menggunakan indikator teknikal seperti **Fibonacci Retracement**, **RSI**, **MACD**, **Bollinger Bands**, dan **EMA (50, 100, 200)**."
+    "Analisis harga cryptocurrency menggunakan indikator teknikal seperti **Fibonacci Retracement**, **RSI**, **MACD**, **Bollinger Bands**, **EMA**, dan **Volume**."
 )
 
 # Input untuk memilih cryptocurrency
@@ -151,21 +155,34 @@ if df is not None:
     # Tampilkan analisis dalam teks
     st.subheader("📃 Laporan Analisis")
     last_price = df["close"].iloc[-1]
+    last_volume = df["volume"].iloc[-1]
     last_rsi = df["RSI"].iloc[-1]
+    last_macd = macd.iloc[-1]
+    last_macd_signal = macd_signal.iloc[-1]
+
     analysis = f"""
     - **Harga Penutupan Terakhir:** ${last_price:.2f}
+    - **Volume Terakhir:** {last_volume:,.0f}
     - **RSI:** {last_rsi:.2f} ({'Overbought' if last_rsi > 70 else 'Oversold' if last_rsi < 30 else 'Netral'})
+    - **MACD:** {last_macd:.2f}
+    - **MACD Signal:** {last_macd_signal:.2f}
+    - **Bollinger Bands:** 
+        - Upper: ${bb_upper.iloc[-1]:.2f}
+        - Middle: ${bb_middle.iloc[-1]:.2f}
+        - Lower: ${bb_lower.iloc[-1]:.2f}
+    - **EMA 50:** ${ema_50.iloc[-1]:.2f}
+    - **EMA 100:** ${ema_100.iloc[-1]:.2f}
+    - **EMA 200:** ${ema_200.iloc[-1]:.2f}
     """
-    for level_name, level_value in fib_levels.items():
-        analysis += f"- Fibonacci {level_name}: ${level_value:.2f}\n"
     st.markdown(analysis)
 
     # Narasi berbentuk berita
     st.subheader("📰 Narasi Analisis Teknikal")
     news = f"""
-    Pada penutupan terakhir, harga {coin_id.capitalize()} berada di ${last_price:.2f}. Indikator RSI menunjukkan kondisi {'overbought' if last_rsi > 70 else 'oversold' if last_rsi < 30 else 'netral'}, sementara MACD mengindikasikan {'tren bullish' if macd.iloc[-1] > macd_signal.iloc[-1] else 'tren bearish'}. 
-    Bollinger Bands menunjukkan bahwa harga saat ini berada di bagian {'atas' if last_price > bb_middle.iloc[-1] else 'bawah'} dari pita tengah, yang dapat mengindikasikan {'tekanan beli' if last_price > bb_middle.iloc[-1] else 'tekanan jual'}. 
-    Level Fibonacci retracement memberikan panduan penting dengan level 50% di sekitar ${fib_levels['50%']:.2f}, yang dapat menjadi area support atau resistance utama. 
-    Tren jangka pendek dan panjang diwakili oleh EMA menunjukkan {'momentum positif' if ema_50.iloc[-1] > ema_200.iloc[-1] else 'momentum negatif'}, mengindikasikan potensi {'kenaikan harga lebih lanjut' if ema_50.iloc[-1] > ema_200.iloc[-1] else 'penurunan harga lebih lanjut'}. Secara keseluruhan, pasar menunjukkan {'peluang menarik' if ema_50.iloc[-1] > ema_100.iloc[-1] else 'kondisi yang perlu diwaspadai'} bagi para investor.
+    Pada penutupan terakhir, harga {coin_id.capitalize()} berada di ${last_price:.2f} dengan volume perdagangan sebesar {last_volume:,.0f}. 
+    Indikator RSI menunjukkan kondisi {'overbought' if last_rsi > 70 else 'oversold' if last_rsi < 30 else 'netral'}, sementara MACD berada pada level {last_macd:.2f} dengan sinyal di {last_macd_signal:.2f}, mengindikasikan {'tren bullish' if last_macd > last_macd_signal else 'tren bearish'}. 
+    Bollinger Bands menunjukkan harga berada di {'atas' if last_price > bb_middle.iloc[-1] else 'bawah'} pita tengah, yang mencerminkan {'tekanan beli' if last_price > bb_middle.iloc[-1] else 'tekanan jual'}. 
+    EMA 50 saat ini berada di ${ema_50.iloc[-1]:.2f}, sementara EMA 200 berada di ${ema_200.iloc[-1]:.2f}, mengindikasikan {'momentum positif' if ema_50.iloc[-1] > ema_200.iloc[-1] else 'momentum negatif'}. 
+    Dengan volume yang {'meningkat' if last_volume > df['volume'].mean() else 'menurun'}, pasar menunjukkan {'potensi pergerakan signifikan' if last_volume > df['volume'].mean() else 'stabilitas relatif'}.
     """
     st.markdown(f"<div style='text-align: justify;'>{news}</div>", unsafe_allow_html=True)
