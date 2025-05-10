@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 import pytz
 import time
 import requests
+import plotly.graph_objects as go  # Import tambahan untuk grafik yang artistik
 
 # ————————————————————
 # Utility formatting angka Indonesia 
@@ -196,47 +197,49 @@ try:
 
         st.markdown(table_html, unsafe_allow_html=True)
 
-        # Hitung statistik tambahan
-        mean_log = np.mean(np.log(finals))
-        harga_mean = np.exp(mean_log)
-        chance_above_mean = np.mean(finals > harga_mean) * 100
-        std_dev = np.std(finals)
-        skewness = pd.Series(finals).skew()
+        # Grafik Sebaran Simulasi (Scatter Plot)
+        scatter_fig = go.Figure()
 
-        # Format angka
-        mean_log_fmt = format_angka_indonesia(mean_log)
-        harga_mean_fmt = format_angka_indonesia(harga_mean)
-        chance_above_mean_fmt = format_persen_indonesia(chance_above_mean)
-        std_dev_fmt = format_angka_indonesia(std_dev)
-        skewness_fmt = format_angka_indonesia(skewness)
+        for i in range(100):  # Sampling 100 simulasi dari 100,000 untuk visualisasi
+            scatter_fig.add_trace(go.Scatter(
+                x=list(range(1, days + 1)),
+                y=sims[:, i],
+                mode="lines",
+                line=dict(width=0.5, color="rgba(0, 100, 250, 0.2)"),
+                showlegend=False
+            ))
 
-        # Tambahkan tabel statistik dan kesimpulan
-        stat_table_html = f"""
-<br>
-<table>
-<thead><tr><th>Statistik</th><th>Nilai</th></tr></thead><tbody>
-<tr><td>Mean (Harga Logaritmik)</td><td>{mean_log_fmt}</td></tr>
-<tr><td>Harga Berdasarkan Mean</td><td>US${harga_mean_fmt}</td></tr>
-<tr><td>Chance Above Mean</td><td>{chance_above_mean_fmt}</td></tr>
-<tr><td>Standard Deviation</td><td>US${std_dev_fmt}</td></tr>
-<tr><td>Skewness</td><td>{skewness_fmt}</td></tr>
-<tr class="highlight-grey">
-    <td colspan="2">
-        <strong>Kesimpulan:</strong><br>
-        Berdasarkan hasil simulasi, harga kripto diperkirakan berada dalam kisaran yang cukup stabil, dengan harga logaritmik rata-rata (mean) sebesar <strong>US${harga_mean_fmt}</strong>. Ini menunjukkan potensi pergerakan harga mendekati angka ini dalam beberapa waktu ke depan. Dengan kemungkinan <strong>{chance_above_mean_fmt}</strong> harga akan berada di atas harga rata-rata, peluang untuk harga naik cukup signifikan. Meskipun begitu, fluktuasi harga masih tinggi, tercermin dari <strong>Standard Deviation</strong> sebesar <strong>US${std_dev_fmt}</strong>, yang menunjukkan adanya kemungkinan fluktuasi harga yang cukup lebar. Distribusi harga cenderung naik. Dengan <strong>Skewness</strong> sebesar <strong>{skewness_fmt}</strong>, ini menunjukkan bahwa distribusi harga cenderung condong ke kanan, artinya kemungkinan harga akan naik lebih besar daripada turun.
-    </td>
-</tr>
-</tbody></table>
-"""
-        st.markdown(stat_table_html, unsafe_allow_html=True)
-
-        # Tambahkan kotak teks untuk media sosial
-        social_media_text = (
-            f"Berdasarkan simulasi Monte Carlo, ada peluang sebesar {total_peluang_fmt} "
-            f"bagi {ticker_input} bergerak antara US${rentang_bawah_fmt} hingga US${rentang_atas_fmt} "
-            f"dalam {days} hari ke depan, dengan peluang {chance_above_mean_fmt} berada di atas rata-rata logaritmik US${harga_mean_fmt}."
+        scatter_fig.update_layout(
+            title=f"Sebaran Simulasi Harga Kripto {ticker_input}",
+            xaxis_title="Hari ke-",
+            yaxis_title="Harga (US$)",
+            template="plotly_dark",
+            height=500,
+            width=800
         )
-        st.text_area("Teks untuk Media Sosial", value=social_media_text, height=100)
+
+        st.plotly_chart(scatter_fig)
+
+        # Grafik Histogram Probabilistik
+        hist_fig = go.Figure()
+
+        hist_fig.add_trace(go.Bar(
+            x=[f"{format_angka_indonesia(bins[i])} - {format_angka_indonesia(bins[i+1])}" for i in range(len(bins) - 1)],
+            y=probs,
+            marker=dict(color="rgba(255, 100, 100, 0.7)", line=dict(color="rgba(255, 100, 100, 1.0)", width=1)),
+            hoverinfo="x+y"
+        ))
+
+        hist_fig.update_layout(
+            title=f"Histogram Probabilitas Harga Kripto {ticker_input}",
+            xaxis_title="Rentang Harga (US$)",
+            yaxis_title="Peluang (%)",
+            template="plotly_dark",
+            height=500,
+            width=800
+        )
+
+        st.plotly_chart(hist_fig)
 
 except Exception as e:
     st.error(f"Terjadi kesalahan: {e}")
