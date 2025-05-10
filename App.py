@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 import pytz
 import time
 import requests
-import plotly.graph_objects as go  # Import tambahan untuk grafik yang artistik
+import plotly.graph_objects as go  # Library tambahan untuk grafik artistik
 
 # ————————————————————
 # Utility formatting angka Indonesia 
@@ -160,42 +160,6 @@ try:
         bins = np.linspace(finals.min(), finals.max(), 10)
         counts, _ = np.histogram(finals, bins=bins)
         probs = counts / len(finals) * 100
-        idx_sorted = np.argsort(probs)[::-1]
-
-        table_html = "<table><thead><tr><th>Peluang</th><th>Rentang Harga (US$)</th></tr></thead><tbody>"
-
-        total_peluang = 0
-        rentang_bawah = float('inf')
-        rentang_atas = 0
-
-        for idx, id_sort in enumerate(idx_sorted):
-            if probs[id_sort] == 0:
-                continue
-            low = bins[id_sort]
-            high = bins[id_sort+1] if id_sort+1 < len(bins) else bins[-1]
-            low_fmt = format_angka_indonesia(low)
-            high_fmt = format_angka_indonesia(high)
-            pct = format_persen_indonesia(probs[id_sort])
-            table_html += f"<tr><td>{pct}</td><td>{low_fmt} - {high_fmt}</td></tr>"
-
-            if idx < 3:
-                total_peluang += probs[id_sort]
-                rentang_bawah = min(rentang_bawah, low)
-                rentang_atas = max(rentang_atas, high)
-
-        total_peluang_fmt = format_persen_indonesia(total_peluang)
-        rentang_bawah_fmt = format_angka_indonesia(rentang_bawah)
-        rentang_atas_fmt = format_angka_indonesia(rentang_atas)
-
-        table_html += f"""
-        <tr class='highlight-green'><td colspan='2'>
-        Peluang kumulatif dari tiga rentang harga tertinggi mencapai {total_peluang_fmt}, dengan kisaran harga US${rentang_bawah_fmt} hingga US${rentang_atas_fmt}.
-        </td></tr>
-        """
-
-        table_html += "</tbody></table>"
-
-        st.markdown(table_html, unsafe_allow_html=True)
 
         # Grafik Sebaran Simulasi (Scatter Plot)
         scatter_fig = go.Figure()
