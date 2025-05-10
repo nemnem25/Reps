@@ -163,6 +163,9 @@ if df is not None:
     # Narasi berbentuk berita
     st.subheader("📰 Narasi Analisis Teknikal")
     news = f"""
-    Pada penutupan terakhir, harga {coin_id.capitalize()} berada di ${last_price:.2f}. Indikator RSI menunjukkan kondisi {'overbought' if last_rsi > 70 else 'oversold' if last_rsi < 30 else 'netral'}, sementara MACD mengindikasikan {'tren bullish' if macd.iloc[-1] > macd_signal.iloc[-1] else 'tren bearish'}. Level Fibonacci retracement memberikan panduan penting dengan level 50% di sekitar ${fib_levels['50%']:.2f}. 
+    Pada penutupan terakhir, harga {coin_id.capitalize()} berada di ${last_price:.2f}. Indikator RSI menunjukkan kondisi {'overbought' if last_rsi > 70 else 'oversold' if last_rsi < 30 else 'netral'}, sementara MACD mengindikasikan {'tren bullish' if macd.iloc[-1] > macd_signal.iloc[-1] else 'tren bearish'}. 
+    Bollinger Bands menunjukkan bahwa harga saat ini berada di bagian {'atas' if last_price > bb_middle.iloc[-1] else 'bawah'} dari pita tengah, yang dapat mengindikasikan {'tekanan beli' if last_price > bb_middle.iloc[-1] else 'tekanan jual'}. 
+    Level Fibonacci retracement memberikan panduan penting dengan level 50% di sekitar ${fib_levels['50%']:.2f}, yang dapat menjadi area support atau resistance utama. 
+    Tren jangka pendek dan panjang diwakili oleh EMA menunjukkan {'momentum positif' if ema_50.iloc[-1] > ema_200.iloc[-1] else 'momentum negatif'}, mengindikasikan potensi {'kenaikan harga lebih lanjut' if ema_50.iloc[-1] > ema_200.iloc[-1] else 'penurunan harga lebih lanjut'}. Secara keseluruhan, pasar menunjukkan {'peluang menarik' if ema_50.iloc[-1] > ema_100.iloc[-1] else 'kondisi yang perlu diwaspadai'} bagi para investor.
     """
-    st.markdown(news)
+    st.markdown(f"<div style='text-align: justify;'>{news}</div>", unsafe_allow_html=True)
