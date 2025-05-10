@@ -143,10 +143,10 @@ try:
     harga_penutupan = format_angka_indonesia(current_price)
     st.write(f"**Harga penutupan {ticker_input} sehari sebelumnya: US${harga_penutupan}**")
 
-    # **Gunakan seed yang dinamis berdasarkan tanggal dan harga penutupan**
+    # Kombinasi simbol kripto, tanggal hari ini, dan harga penutupan terakhir untuk random seed
     today = datetime.now().strftime("%Y-%m-%d")
-    seed = hash((today, current_price)) % 2**32  # Kombinasi tanggal dan harga penutupan
-    np.random.seed(seed)
+    seed = hash((ticker_input, today, current_price)) % 2**32
+    np.random.seed(seed)  # Atur random seed di sini
 
     for days in [3, 7, 30, 90, 365]:
         st.subheader(f"Proyeksi Harga Kripto {ticker_input} untuk {days} Hari ke Depan")
